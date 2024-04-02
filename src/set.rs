@@ -352,7 +352,8 @@ impl<T> ExactSizeIterator for Iter<'_, T> {
 }
 
 #[cfg(feature = "serde")]
-mod serde {
+#[doc(hidden)]
+pub mod serde {
     use core::marker::PhantomData;
     use serde::{
         ser::{Serialize, Serializer},
@@ -397,6 +398,54 @@ mod serde {
             }
 
             Ok(set)
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::set::PrefixTreeSet;
+
+        #[test]
+        fn serde_roundtrip() {
+            let orig = PrefixTreeSet::from([
+                [1, 3, 5, 7],
+                [2, 4, 6, 8],
+                [9, 7, 5, 3],
+            ]);
+            let json = serde_json::to_string_pretty(&orig).unwrap();
+            let dupe: PrefixTreeSet<[u8; 4]> = serde_json::from_str(&json).unwrap();
+
+            assert_eq!(orig, dupe);
+        }
+
+        #[test]
+        fn std_to_pfx() {
+            let std_seq = vec![
+                *b"abcdef",
+                *b"defghi",
+                *b"lkjhgf",
+                *b"pqrstu",
+                *b"uvwxyz",
+            ];
+            let json = serde_json::to_string_pretty(&std_seq).unwrap();
+            let pfx_seq: PrefixTreeSet<[u8; 6]> = serde_json::from_str(&json).unwrap();
+
+            assert!(pfx_seq.iter().eq(&std_seq));
+        }
+
+        #[test]
+        fn pfx_to_std() {
+            let pfx_seq = PrefixTreeSet::from([
+                *b"abdef",
+                *b"uvxyz",
+                *b"pqstu",
+                *b"deghi",
+                *b"lkhgf",
+            ]);
+            let json = serde_json::to_string_pretty(&pfx_seq).unwrap();
+            let std_seq: Vec<[u8; 5]> = serde_json::from_str(&json).unwrap();
+
+            assert!(std_seq.iter().eq(&pfx_seq));
         }
     }
 }

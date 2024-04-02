@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/", env!("CARGO_PKG_README")))]
 
 pub mod map;
 pub mod set;

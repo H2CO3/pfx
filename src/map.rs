@@ -1069,7 +1069,8 @@ impl<K, V> ExactSizeIterator for Values<'_, K, V> {
 }
 
 #[cfg(feature = "serde")]
-mod serde {
+#[doc(hidden)]
+pub mod serde {
     use core::marker::PhantomData;
     use serde::{
         ser::{Serialize, Serializer},
@@ -1120,6 +1121,58 @@ mod serde {
             }
 
             Ok(map)
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use std::collections::BTreeMap;
+        use crate::map::PrefixTreeMap;
+
+        #[test]
+        fn serde_roundtrip() {
+            let orig = PrefixTreeMap::from([
+                ("hey".to_owned(), 123),
+                ("hay".to_owned(), 456),
+                ("how".to_owned(), 789),
+                ("hog".to_owned(), 444),
+            ]);
+            let json = serde_json::to_string_pretty(&orig).unwrap();
+            let dupe: PrefixTreeMap<String, u64> = serde_json::from_str(&json).unwrap();
+
+            assert_eq!(orig, dupe);
+        }
+
+        #[test]
+        fn std_to_pfx() {
+            let std_map = BTreeMap::from([
+                ("a".to_owned(), 100),
+                ("ab".to_owned(), 110),
+                ("abc".to_owned(), 111),
+                ("d".to_owned(), 200),
+                ("de".to_owned(), 210),
+                ("def".to_owned(), 211),
+            ]);
+            let json = serde_json::to_string_pretty(&std_map).unwrap();
+            let pfx_map: PrefixTreeMap<String, i32> = serde_json::from_str(&json).unwrap();
+
+            assert!(pfx_map.iter().eq(&std_map));
+        }
+
+        #[test]
+        fn pfx_to_std() {
+            let pfx_map = PrefixTreeMap::from([
+                ("a".to_owned(), 100),
+                ("ab".to_owned(), 110),
+                ("abc".to_owned(), 111),
+                ("d".to_owned(), 200),
+                ("de".to_owned(), 210),
+                ("def".to_owned(), 211),
+            ]);
+            let json = serde_json::to_string_pretty(&pfx_map).unwrap();
+            let std_map: BTreeMap<String, i32> = serde_json::from_str(&json).unwrap();
+
+            assert!(std_map.iter().eq(&pfx_map));
         }
     }
 }
