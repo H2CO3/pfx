@@ -1067,3 +1067,59 @@ impl<K, V> ExactSizeIterator for Values<'_, K, V> {
         self.iter.len()
     }
 }
+
+#[cfg(feature = "serde")]
+mod serde {
+    use core::marker::PhantomData;
+    use serde::{
+        ser::{Serialize, Serializer},
+        de::{Deserialize, Deserializer, Visitor, MapAccess},
+    };
+    use crate::map::PrefixTreeMap;
+
+
+    impl<K, V> Serialize for PrefixTreeMap<K, V>
+    where
+        K: Serialize,
+        V: Serialize,
+    {
+        fn serialize<S: Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+            ser.collect_map(self)
+        }
+    }
+
+    impl<'de, K, V> Deserialize<'de> for PrefixTreeMap<K, V>
+    where
+        K: Deserialize<'de> + AsRef<[u8]>,
+        V: Deserialize<'de>,
+    {
+        fn deserialize<D: Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
+            de.deserialize_map(PrefixTreeMapVisitor(PhantomData))
+        }
+    }
+
+
+    struct PrefixTreeMapVisitor<K, V>(PhantomData<(K, V)>);
+
+    impl<'de, K, V> Visitor<'de> for PrefixTreeMapVisitor<K, V>
+    where
+        K: Deserialize<'de> + AsRef<[u8]>,
+        V: Deserialize<'de>,
+    {
+        type Value = PrefixTreeMap<K, V>;
+
+        fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            f.write_str("map")
+        }
+
+        fn visit_map<A: MapAccess<'de>>(self, mut acc: A) -> Result<Self::Value, A::Error> {
+            let mut map = PrefixTreeMap::new();
+
+            while let Some((key, value)) = acc.next_entry()? {
+                map.insert(key, value);
+            }
+
+            Ok(map)
+        }
+    }
+}

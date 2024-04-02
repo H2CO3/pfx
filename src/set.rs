@@ -350,3 +350,53 @@ impl<T> ExactSizeIterator for Iter<'_, T> {
         self.keys.len()
     }
 }
+
+#[cfg(feature = "serde")]
+mod serde {
+    use core::marker::PhantomData;
+    use serde::{
+        ser::{Serialize, Serializer},
+        de::{Deserialize, Deserializer, Visitor, SeqAccess},
+    };
+    use crate::set::PrefixTreeSet;
+
+
+    impl<T: Serialize> Serialize for PrefixTreeSet<T> {
+        fn serialize<S: Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+            ser.collect_seq(self)
+        }
+    }
+
+    impl<'de, T> Deserialize<'de> for PrefixTreeSet<T>
+    where
+        T: Deserialize<'de> + AsRef<[u8]>,
+    {
+        fn deserialize<D: Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
+            de.deserialize_seq(PrefixTreeSetVisitor(PhantomData))
+        }
+    }
+
+
+    struct PrefixTreeSetVisitor<T>(PhantomData<T>);
+
+    impl<'de, T> Visitor<'de> for PrefixTreeSetVisitor<T>
+    where
+        T: Deserialize<'de> + AsRef<[u8]>,
+    {
+        type Value = PrefixTreeSet<T>;
+
+        fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            f.write_str("set")
+        }
+
+        fn visit_seq<A: SeqAccess<'de>>(self, mut acc: A) -> Result<Self::Value, A::Error> {
+            let mut set = PrefixTreeSet::new();
+
+            while let Some(item) = acc.next_element()? {
+                set.insert(item);
+            }
+
+            Ok(set)
+        }
+    }
+}

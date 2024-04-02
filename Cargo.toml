@@ -4,9 +4,12 @@ authors = ["Árpád Goretity <arpad.goretity@gmail.com>"]
 description = "A prefix tree (map and set), implemented without any unsafe"
 readme = "README.md"
 license = "MIT"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.77.0"
 keywords = ["prefix", "prefix-tree", "set", "map"]
 categories = ["data-structures", "algorithms", "rust-patterns"]
 documentation = "https://docs.rs/pfx"
+
+[dependencies]
+serde = { version = "1.0", optional = true }
