@@ -145,14 +145,10 @@ impl<K, V> PrefixTreeMap<K, V> {
     where
         Q: ?Sized + AsRef<[u8]>
     {
-        self.root.search_mut(prefix.as_ref().iter().copied()).map_or(
-            NodeIntoIter {
-                item: None,
-                children_iter: Vec::new().into_iter(),
-                curr_child_iter: None,
-            },
-            |node| mem::take(node).into_iter()
-        )
+        self.root
+            .search_mut(prefix.as_ref().iter().copied())
+            .map(|node| mem::take(node).into_iter())
+            .unwrap_or_default()
     }
 
     /// An iterator over borrowed key-value pairs of which the key starts with the given prefix.
@@ -162,14 +158,10 @@ impl<K, V> PrefixTreeMap<K, V> {
     where
         Q: ?Sized + AsRef<[u8]>
     {
-        self.root.search(prefix.as_ref().iter().copied()).map_or(
-            NodeIter {
-                item: None,
-                children_iter: [].iter(),
-                curr_child_iter: None,
-            },
-            Node::iter
-        )
+        self.root
+            .search(prefix.as_ref().iter().copied())
+            .map(Node::iter)
+            .unwrap_or_default()
     }
 
     /// Removes all internal nodes that do not contain an entry.
@@ -726,10 +718,21 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
 }
 
 /// Iterator over an owned subtree.
+#[derive(Clone, Debug)]
 pub struct NodeIntoIter<K, V> {
     item: Option<(K, V)>,
     children_iter: std::vec::IntoIter<Node<K, V>>,
     curr_child_iter: Option<Box<NodeIntoIter<K, V>>>,
+}
+
+impl<K, V> Default for NodeIntoIter<K, V> {
+    fn default() -> Self {
+        NodeIntoIter {
+            item: None,
+            children_iter: Vec::new().into_iter(),
+            curr_child_iter: None,
+        }
+    }
 }
 
 impl<K, V> Iterator for NodeIntoIter<K, V> {
@@ -769,10 +772,31 @@ impl<K, V> Iterator for NodeIntoIter<K, V> {
 impl<K, V> FusedIterator for NodeIntoIter<K, V> {}
 
 /// Iterator over a borrowed subtree.
+#[derive(Debug)]
 pub struct NodeIter<'a, K, V> {
     item: Option<&'a (K, V)>,
     children_iter: core::slice::Iter<'a, Node<K, V>>,
     curr_child_iter: Option<Box<NodeIter<'a, K, V>>>,
+}
+
+impl<K, V> Default for NodeIter<'_, K, V> {
+    fn default() -> Self {
+        NodeIter {
+            item: None,
+            children_iter: [].iter(),
+            curr_child_iter: None,
+        }
+    }
+}
+
+impl<K, V> Clone for NodeIter<'_, K, V> {
+    fn clone(&self) -> Self {
+        NodeIter {
+            item: self.item,
+            children_iter: self.children_iter.clone(),
+            curr_child_iter: self.curr_child_iter.clone(),
+        }
+    }
 }
 
 impl<'a, K, V> Iterator for NodeIter<'a, K, V> {
@@ -812,9 +836,19 @@ impl<'a, K, V> Iterator for NodeIter<'a, K, V> {
 impl<K, V> FusedIterator for NodeIter<'_, K, V> {}
 
 /// Iterator over all the values of the tree.
+#[derive(Clone, Debug)]
 pub struct IntoIter<K, V> {
     iter: NodeIntoIter<K, V>,
     len: usize,
+}
+
+impl<K, V> Default for IntoIter<K, V> {
+    fn default() -> Self {
+        IntoIter {
+            iter: NodeIntoIter::default(),
+            len: 0,
+        }
+    }
 }
 
 impl<K, V> Iterator for IntoIter<K, V> {
@@ -840,9 +874,28 @@ impl<K, V> ExactSizeIterator for IntoIter<K, V> {
 }
 
 /// Iterator over references to the values of the tree.
+#[derive(Debug)]
 pub struct Iter<'a, K, V> {
     iter: NodeIter<'a, K, V>,
     len: usize,
+}
+
+impl<K, V> Default for Iter<'_, K, V> {
+    fn default() -> Self {
+        Iter {
+            iter: NodeIter::default(),
+            len: 0,
+        }
+    }
+}
+
+impl<K, V> Clone for Iter<'_, K, V> {
+    fn clone(&self) -> Self {
+        Iter {
+            iter: self.iter.clone(),
+            len: self.len,
+        }
+    }
 }
 
 impl<'a, K, V> Iterator for Iter<'a, K, V> {
@@ -868,8 +921,17 @@ impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
 }
 
 /// Iterator over the owned keys.
+#[derive(Clone, Debug)]
 pub struct IntoKeys<K, V> {
     iter: IntoIter<K, V>,
+}
+
+impl<K, V> Default for IntoKeys<K, V> {
+    fn default() -> Self {
+        IntoKeys {
+            iter: IntoIter::default(),
+        }
+    }
 }
 
 impl<K, V> Iterator for IntoKeys<K, V> {
@@ -893,8 +955,23 @@ impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
 }
 
 /// Iterator over the borrowed keys.
+#[derive(Debug)]
 pub struct Keys<'a, K, V> {
     iter: Iter<'a, K, V>,
+}
+
+impl<K, V> Default for Keys<'_, K, V> {
+    fn default() -> Self {
+        Keys {
+            iter: Iter::default(),
+        }
+    }
+}
+
+impl<K, V> Clone for Keys<'_, K, V> {
+    fn clone(&self) -> Self {
+        Keys { iter: self.iter.clone() }
+    }
 }
 
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
@@ -918,8 +995,17 @@ impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
 }
 
 /// Iterator over the owned values.
+#[derive(Clone, Debug)]
 pub struct IntoValues<K, V> {
     iter: IntoIter<K, V>,
+}
+
+impl<K, V> Default for IntoValues<K, V> {
+    fn default() -> Self {
+        IntoValues {
+            iter: IntoIter::default(),
+        }
+    }
 }
 
 impl<K, V> Iterator for IntoValues<K, V> {
@@ -943,8 +1029,23 @@ impl<K, V> ExactSizeIterator for IntoValues<K, V> {
 }
 
 /// Iterator over the borrowed values.
+#[derive(Debug)]
 pub struct Values<'a, K, V> {
     iter: Iter<'a, K, V>,
+}
+
+impl<K, V> Default for Values<'_, K, V> {
+    fn default() -> Self {
+        Values {
+            iter: Iter::default(),
+        }
+    }
+}
+
+impl<K, V> Clone for Values<'_, K, V> {
+    fn clone(&self) -> Self {
+        Values { iter: self.iter.clone() }
+    }
 }
 
 impl<'a, K, V> Iterator for Values<'a, K, V> {

@@ -276,8 +276,21 @@ where
 }
 
 /// An iterator over the owned items of this set.
+#[derive(Debug)]
 pub struct IntoIter<T> {
     keys: IntoKeys<T, ()>,
+}
+
+impl<T> Default for IntoIter<T> {
+    fn default() -> Self {
+        IntoIter { keys: IntoKeys::default() }
+    }
+}
+
+impl<T: Clone> Clone for IntoIter<T> {
+    fn clone(&self) -> Self {
+        IntoIter { keys: self.keys.clone() }
+    }
 }
 
 impl<T> Iterator for IntoIter<T> {
@@ -301,8 +314,21 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 }
 
 /// An iterator over the borrowed items of this set.
+#[derive(Debug)]
 pub struct Iter<'a, T> {
     keys: Keys<'a, T, ()>,
+}
+
+impl<T> Default for Iter<'_, T> {
+    fn default() -> Self {
+        Iter { keys: Keys::default() }
+    }
+}
+
+impl<T: Clone> Clone for Iter<'_, T> {
+    fn clone(&self) -> Self {
+        Iter { keys: self.keys.clone() }
+    }
 }
 
 impl<'a, T> Iterator for Iter<'a, T> {
