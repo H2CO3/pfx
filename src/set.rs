@@ -1,12 +1,13 @@
 //! A set of byte strings, based on a prefix tree.
 
 use core::iter::FusedIterator;
+use core::fmt::{self, Debug, Formatter};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
-use crate::map::{PrefixTreeMap, Keys, IntoKeys};
+use crate::map::{PrefixTreeMap, NodeIntoIter, NodeIter, Keys, IntoKeys};
 
 
 /// An ordered set based on a prefix tree.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PrefixTreeSet<T> {
     map: PrefixTreeMap<T, ()>,
 }
@@ -47,6 +48,26 @@ impl<T> PrefixTreeSet<T> {
     /// Returns an iterator over the borrowed items.
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { keys: self.map.keys() }
+    }
+
+    /// An iterator over owned keys that start with the given prefix.
+    ///
+    /// Iteration proceeds in lexicographic order, as determined by the byte sequence of keys.
+    pub fn into_prefix_iter<Q>(self, key: &Q) -> IntoPrefixIter<T>
+    where
+        Q: ?Sized + AsRef<[u8]>
+    {
+        IntoPrefixIter { iter: self.map.into_prefix_iter(key) }
+    }
+
+    /// An iterator over borrowed keys that start with the given prefix.
+    ///
+    /// Iteration proceeds in lexicographic order, as determined by the byte sequence of keys.
+    pub fn prefix_iter<Q>(&self, key: &Q) -> PrefixIter<'_, T>
+    where
+        Q: ?Sized + AsRef<[u8]>
+    {
+        PrefixIter { iter: self.map.prefix_iter(key) }
     }
 
     /// Removes all internal nodes which are not useful.
@@ -143,11 +164,11 @@ impl<T> Default for PrefixTreeSet<T> {
     }
 }
 
-impl<K, const N: usize> From<[K; N]> for PrefixTreeSet<K>
+impl<T, const N: usize> From<[T; N]> for PrefixTreeSet<T>
 where
-    K: AsRef<[u8]>
+    T: AsRef<[u8]>
 {
-    fn from(items: [K; N]) -> Self {
+    fn from(items: [T; N]) -> Self {
         items.into_iter().collect()
     }
 }
@@ -275,6 +296,12 @@ where
     }
 }
 
+impl<T: Debug> Debug for PrefixTreeSet<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_set().entries(self).finish()
+    }
+}
+
 /// An iterator over the owned items of this set.
 #[derive(Debug)]
 pub struct IntoIter<T> {
@@ -325,7 +352,7 @@ impl<T> Default for Iter<'_, T> {
     }
 }
 
-impl<T: Clone> Clone for Iter<'_, T> {
+impl<T> Clone for Iter<'_, T> {
     fn clone(&self) -> Self {
         Iter { keys: self.keys.clone() }
     }
@@ -350,6 +377,70 @@ impl<T> ExactSizeIterator for Iter<'_, T> {
         self.keys.len()
     }
 }
+
+#[derive(Debug)]
+pub struct IntoPrefixIter<T> {
+    iter: NodeIntoIter<T, ()>,
+}
+
+impl<T> Default for IntoPrefixIter<T> {
+    fn default() -> Self {
+        IntoPrefixIter { iter: NodeIntoIter::default() }
+    }
+}
+
+impl<T: Clone> Clone for IntoPrefixIter<T> {
+    fn clone(&self) -> Self {
+        IntoPrefixIter { iter: self.iter.clone() }
+    }
+}
+
+impl<T> Iterator for IntoPrefixIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (key, ()) = self.iter.next()?;
+        Some(key)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<T> FusedIterator for IntoPrefixIter<T> {}
+
+#[derive(Debug)]
+pub struct PrefixIter<'a, T> {
+    iter: NodeIter<'a, T, ()>,
+}
+
+impl<T> Default for PrefixIter<'_, T> {
+    fn default() -> Self {
+        PrefixIter { iter: NodeIter::default() }
+    }
+}
+
+impl<T> Clone for PrefixIter<'_, T> {
+    fn clone(&self) -> Self {
+        PrefixIter { iter: self.iter.clone() }
+    }
+}
+
+impl<'a, T> Iterator for PrefixIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (key, ()) = self.iter.next()?;
+        Some(key)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<T> FusedIterator for PrefixIter<'_, T> {}
 
 #[cfg(feature = "serde")]
 #[doc(hidden)]

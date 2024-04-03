@@ -2,11 +2,12 @@
 
 use core::mem;
 use core::iter::FusedIterator;
+use core::fmt::{self, Debug, Formatter};
 use core::ops::{Index, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
 
 
 /// An ordered map from byte strings to arbitrary values, based on a prefix tree.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PrefixTreeMap<K, V> {
     root: Node<K, V>,
     len: usize,
@@ -434,6 +435,16 @@ where
     fn bitxor(mut self, other: I) -> Self::Output {
         self ^= other;
         self
+    }
+}
+
+impl<K, V> Debug for PrefixTreeMap<K, V>
+where
+    K: Debug,
+    V: Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self).finish()
     }
 }
 

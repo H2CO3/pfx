@@ -178,6 +178,103 @@ mod tests {
     }
 
     #[test]
+    fn iter_byval_cloning() {
+        let map = PrefixTreeMap::from([
+            ("foo", 3),
+            ("bar", 1),
+            ("baz", 2),
+            ("qux", 5),
+            ("nya", 4),
+        ]);
+
+        let mut iter_1 = map.into_iter();
+        assert_eq!(iter_1.len(), 5);
+
+        assert_eq!(iter_1.next(), Some(("bar", 1)));
+        assert_eq!(iter_1.next(), Some(("baz", 2)));
+
+        let mut iter_2 = iter_1.clone();
+        assert_eq!(iter_1.len(), 3);
+        assert_eq!(iter_2.len(), 3);
+
+        assert_eq!(iter_1.next(), Some(("foo", 3)));
+        assert_eq!(iter_1.len(), 2);
+        assert_eq!(iter_2.len(), 3);
+
+        assert_eq!(iter_2.next(), Some(("foo", 3)));
+        assert_eq!(iter_1.len(), 2);
+        assert_eq!(iter_2.len(), 2);
+
+        assert_eq!(iter_2.next(), Some(("nya", 4)));
+        assert_eq!(iter_1.len(), 2);
+        assert_eq!(iter_2.len(), 1);
+
+        assert_eq!(iter_1.next(), Some(("nya", 4)));
+        assert_eq!(iter_1.len(), 1);
+        assert_eq!(iter_2.len(), 1);
+
+        assert_eq!(iter_1.next(), Some(("qux", 5)));
+        assert_eq!(iter_1.next(), None);
+        assert_eq!(iter_1.len(), 0);
+        assert_eq!(iter_2.len(), 1);
+
+        assert_eq!(iter_2.next(), Some(("qux", 5)));
+        assert_eq!(iter_2.next(), None);
+        assert_eq!(iter_1.len(), 0);
+        assert_eq!(iter_2.len(), 0);
+    }
+
+    #[test]
+    fn iter_byref_cloning() {
+        #[derive(Debug, PartialEq, Eq)]
+        struct NoClone(u32);
+
+        let map = PrefixTreeMap::from([
+            ("foo", NoClone(3)),
+            ("bar", NoClone(1)),
+            ("baz", NoClone(2)),
+            ("qux", NoClone(5)),
+            ("nya", NoClone(4)),
+        ]);
+
+        let mut iter_1 = map.iter();
+        assert_eq!(iter_1.len(), 5);
+
+        assert_eq!(iter_1.next(), Some((&"bar", &NoClone(1))));
+        assert_eq!(iter_1.next(), Some((&"baz", &NoClone(2))));
+
+        let mut iter_2 = iter_1.clone();
+        assert_eq!(iter_1.len(), 3);
+        assert_eq!(iter_2.len(), 3);
+
+        assert_eq!(iter_1.next(), Some((&"foo", &NoClone(3))));
+        assert_eq!(iter_1.len(), 2);
+        assert_eq!(iter_2.len(), 3);
+
+        assert_eq!(iter_2.next(), Some((&"foo", &NoClone(3))));
+        assert_eq!(iter_1.len(), 2);
+        assert_eq!(iter_2.len(), 2);
+
+        assert_eq!(iter_2.next(), Some((&"nya", &NoClone(4))));
+        assert_eq!(iter_1.len(), 2);
+        assert_eq!(iter_2.len(), 1);
+
+        assert_eq!(iter_1.next(), Some((&"nya", &NoClone(4))));
+        assert_eq!(iter_1.len(), 1);
+        assert_eq!(iter_2.len(), 1);
+
+        assert_eq!(iter_1.next(), Some((&"qux", &NoClone(5))));
+        assert_eq!(iter_1.next(), None);
+        assert_eq!(iter_1.len(), 0);
+        assert_eq!(iter_2.len(), 1);
+
+        assert_eq!(iter_2.next(), Some((&"qux", &NoClone(5))));
+        assert_eq!(iter_2.next(), None);
+        assert_eq!(iter_1.len(), 0);
+        assert_eq!(iter_2.len(), 0);
+    }
+
+    #[test]
     fn set_operations() {
         let x = PrefixTreeSet::from(["abc", "def", "abc", "qux"]);
         let y = PrefixTreeSet::from(["def", "qux", "what", "4lulz"]);
