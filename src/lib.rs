@@ -178,6 +178,37 @@ mod tests {
     }
 
     #[test]
+    fn prefix_containment() {
+        let map = PrefixTreeMap::from([
+            ("abc", 1),
+            ("abcdef", 2),
+            ("q", 3),
+            ("qr", 4),
+            ("qrs", 5),
+            ("de", 6),
+        ]);
+
+        assert!(map.contains_prefix("a"));
+        assert!(map.contains_prefix("ab"));
+        assert!(map.contains_prefix("abc"));
+        assert!(map.contains_prefix("abcd"));
+        assert!(map.contains_prefix("abcde"));
+        assert!(map.contains_prefix("abcdef"));
+        assert!(map.contains_prefix("d"));
+        assert!(map.contains_prefix("de"));
+        assert!(map.contains_prefix("q"));
+        assert!(map.contains_prefix("qr"));
+        assert!(map.contains_prefix("qrs"));
+        assert!(map.contains_prefix(""));
+
+        assert!(!map.contains_prefix("def"));
+        assert!(!map.contains_prefix("abcdefg"));
+        assert!(!map.contains_prefix("qrss"));
+        assert!(!map.contains_prefix("x"));
+        assert!(!map.contains_prefix("xyz"));
+    }
+
+    #[test]
     fn iter_byval_cloning() {
         let map = PrefixTreeMap::from([
             ("foo", 3),

@@ -28,12 +28,22 @@ impl<T> PrefixTreeSet<T> {
         self.map.is_empty()
     }
 
-    /// Returns `true` if the key is found in the map, `false` otherwise.
+    /// Returns `true` if the item is found in the set, `false` otherwise.
     pub fn contains<Q>(&self, item: &Q) -> bool
     where
         Q: ?Sized + AsRef<[u8]>
     {
         self.map.contains_key(item)
+    }
+
+    /// Returns `true` iff there are any keys with the given prefix in the set.
+    /// This is more efficient than creating a prefix iterator and checking
+    /// whether it is empty.
+    pub fn contains_prefix<Q>(&self, key: &Q) -> bool
+    where
+        Q: ?Sized + AsRef<[u8]>,
+    {
+        self.map.contains_prefix(key)
     }
 
     /// Removes a key if it existed. Returns `true` if a removal happened,
@@ -378,6 +388,7 @@ impl<T> ExactSizeIterator for Iter<'_, T> {
     }
 }
 
+/// An iterator over values of a subtree, i.e., a set of elements sharing a common prefix.
 #[derive(Debug)]
 pub struct IntoPrefixIter<T> {
     iter: NodeIntoIter<T, ()>,
@@ -410,6 +421,7 @@ impl<T> Iterator for IntoPrefixIter<T> {
 
 impl<T> FusedIterator for IntoPrefixIter<T> {}
 
+/// An iterator over references in a subtree, i.e., a set of elements sharing a common prefix.
 #[derive(Debug)]
 pub struct PrefixIter<'a, T> {
     iter: NodeIter<'a, T, ()>,

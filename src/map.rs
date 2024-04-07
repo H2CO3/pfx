@@ -85,6 +85,18 @@ impl<K, V> PrefixTreeMap<K, V> {
             .is_some_and(|node| node.item.is_some())
     }
 
+    /// Returns `true` iff there are any keys with the given prefix in the map.
+    /// This is more efficient than creating a prefix iterator and checking
+    /// whether it is empty.
+    pub fn contains_prefix<Q>(&self, key: &Q) -> bool
+    where
+        Q: ?Sized + AsRef<[u8]>,
+    {
+        self.root
+            .search(key.as_ref().iter().copied())
+            .is_some_and(Node::is_transitively_useful)
+    }
+
     /// If the key exists in the map, return the original key and the correpsonding value.
     pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(K, V)>
     where
@@ -469,6 +481,10 @@ impl<K, V> Node<K, V> {
         }
     }
 
+    fn is_transitively_useful(&self) -> bool {
+        self.item.is_some() || self.children.iter().any(Node::is_transitively_useful)
+    }
+
     /// Deletes leaves/subtrees with only empty nodes. A node is empty
     /// if its item is `None` and all of its children are empty.
     fn compact(&mut self) -> bool {
@@ -480,11 +496,9 @@ impl<K, V> Node<K, V> {
             is_useful
         });
 
-        has_useful_children || self.item.is_some()
+        self.item.is_some() || has_useful_children
     }
-}
 
-impl<K, V> Node<K, V> {
     fn value(&self) -> Option<&V> {
         self.item.as_ref().map(|(_key, value)| value)
     }
